@@ -1,0 +1,9 @@
+Version 0.4
+Number of copies to write
+NT does not always show floppy drives
+Better error message when diskio.dll not found
+
+ToDo
+----
+Command line options
+Other disk formats???
