@@ -9,7 +9,7 @@ uses
 type
 
   TBlockDevice = class(TObject)
-  public
+  public                            
     constructor Create; virtual;
     destructor Destroy; override;
 
@@ -225,6 +225,8 @@ var
    ReadLength : DWORD;
    ActualLengthRead : DWORD;
    Seek       : DWORD;
+   Error : DWORD;
+   ErrorMsg : String;
 begin
    Debug('Reading sector ' + IntToStr(Sector) + ' count = ' + IntToStr(count), DebugHigh);
    // check for a valid handle
@@ -244,8 +246,10 @@ begin
          // seek successful, lets read
          if not ReadFile2(h, Buffer, ReadLength, ActualLengthRead, nil) then
          begin
-            Debug('Read failed error=' + IntToStr(GetLastError), DebugOff);
-            raise Exception.Create('Read failed');
+            Error := GetLastError;
+            ErrorMsg := 'Read failed error = ' + IntToStr(Error) + '(' + SysErrorMessage(Error) + ')';
+            Debug(ErrorMsg, DebugOff);
+            raise Exception.Create(ErrorMsg);
          end
          else if ReadLength <> ActualLengthRead then
          begin
@@ -255,8 +259,10 @@ begin
       else
       begin
          // error
-         Debug('Seek failed error=' + IntToStr(GetLastError), DebugOff);
-         raise Exception.Create('Seek failed');
+         Error := GetLastError;
+         ErrorMsg := 'Seek failed error = ' + IntToStr(Error) + '(' + SysErrorMessage(Error) + ')';
+         Debug(ErrorMsg, DebugOff);
+         raise Exception.Create(ErrorMsg);
       end;
    end;
 end;

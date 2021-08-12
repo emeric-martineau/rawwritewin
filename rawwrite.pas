@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, ComCtrls, ExtCtrls, BlockDev;
+  StdCtrls, ComCtrls, ExtCtrls, BlockDev, AutoUpdate;
 
 const
    DebugHigh = 0;
@@ -19,7 +19,6 @@ type
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
-    Label6: TLabel;
     Button3: TButton;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
@@ -29,11 +28,11 @@ type
     Button1: TButton;
     OpenDialog1: TOpenDialog;
     DebugMemo: TMemo;
-    Button2: TButton;
+    WriteButton: TButton;
     Label7: TLabel;
     ReadFileNameEdit: TEdit;
     Button4: TButton;
-    Button5: TButton;
+    ReadButton: TButton;
     SaveDialog1: TSaveDialog;
     TabSheet3: TTabSheet;
     Memo1: TMemo;
@@ -44,17 +43,28 @@ type
     Label11: TLabel;
     WriteCopyEdit: TEdit;
     UpDown1: TUpDown;
+    TabSheet5: TTabSheet;
+    Memo2: TMemo;
+    TabSheet6: TTabSheet;
+    Label12: TLabel;
+    Label6: TLabel;
+    Label13: TLabel;
+    Label14: TLabel;
+    Button6: TButton;
+    AutoUpdate1: TAutoUpdate;
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure DriveComboBoxDrawItem(Control: TWinControl; Index: Integer;
       Rect: TRect; State: TOwnerDrawState);
-    procedure Button2Click(Sender: TObject);
+    procedure WriteButtonClick(Sender: TObject);
     procedure Label5Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Label3DblClick(Sender: TObject);
     procedure Button4Click(Sender: TObject);
-    procedure Button5Click(Sender: TObject);
+    procedure ReadButtonClick(Sender: TObject);
     procedure TabSheet3Show(Sender: TObject);
+    procedure TabSheet5Show(Sender: TObject);
+    procedure Button6Click(Sender: TObject);
   private
     { Private declarations }
     OSis95 : Boolean;
@@ -121,7 +131,7 @@ var
    CmdRead : Boolean;
    CmdCopies : Integer;
    CmdImage : String;
-   CmdDrive : String;
+   CmdDrive : Integer;
    i : Integer;
 begin
    // Prevent error messages being displayed by NT
@@ -165,13 +175,25 @@ begin
       MessageDlg('No Floppy drives found', mtInformation, [mbOK], 0);
    end;
 
+   if OSis95 then
+   begin
+      if not FileExists('diskio.dll') then
+      begin
+         if MessageDlg('You seem to be missing diskio.dll.  RawWrite can automaticly download it for you.  Do you want to download it now?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+         begin
+            AutoUpdate1.GetFile('diskio.dll');
+         end;
+      end;
+   end;
+
    PageControl1.ActivePage := TabSheet1;
-{
+
    if ParamCount > 0 then
    begin
       CommandLine := True;
       CmdRead := False;
       CmdCopies := 1;
+      CmdDrive := 0;
 
       i := 1;
       while i <= ParamCount do
@@ -186,7 +208,7 @@ begin
             Inc(i);
             CmdRead := False;
          end
-         else if ParamStr(i) = '--write' then
+         else if ParamStr(i) = '--copies' then
          begin
             Inc(i);
             CmdCopies := StrToIntDef(ParamStr(i), 1);
@@ -195,7 +217,7 @@ begin
          else if ParamStr(i) = '--drive' then
          begin
             Inc(i);
-            CmdDrive := ParamStr(i);
+            CmdDrive := StrToIntDef(ParamStr(i), 0);
             Inc(i);
          end
          else
@@ -215,13 +237,44 @@ begin
       end;
       // check command line parameters
       // [--write] [--copies n] [--drive \\.\a:] file.img
-      // --read [--drive \\.\a:] file.img
+      // --read [--drive 0|1|...] file.img
+      if CmdRead then
+      begin
+         try
+            // do a command line read
+            ReadFileNameEdit.Text := CmdImage;
+            DriveComboBox.ItemIndex := CmdDrive;
+            ReadButtonClick(ReadButton);
+         except
+            on E : Exception do
+            begin
+               MessageDlg(E.Message, mtError, [mbOK], 0);
+            end;
+         end;
+         Application.Terminate;
+      end
+      else
+      begin
+         // do a command line write
+         try
+            WriteCopyEdit.Text := IntToStr(CmdCopies);
+            FileNameEdit.Text := CmdImage;
+            DriveComboBox.ItemIndex := CmdDrive;
+            WriteButtonClick(WriteButton);
+         except
+            on E : Exception do
+            begin
+               MessageDlg(E.Message, mtError, [mbOK], 0);
+            end;
+         end;
+         Application.Terminate;
+      end;
+
    end
    else
    begin
       CommandLine := False;
    end;
-   }
 end;
 
 procedure TMainForm.FindFloppy;
@@ -269,7 +322,7 @@ begin
          else
          begin
             Debug(FileName, DebugLow);
-            Debug(IntToStr(GetLastError) + #10 + SysErrorMessage(Error), DebugLow);
+            Debug(IntToStr(Error) + #10 + SysErrorMessage(Error), DebugLow);
          end;
       end;
    end;
@@ -286,7 +339,7 @@ begin
    end;
 end;
 
-procedure TMainForm.Button2Click(Sender: TObject);
+procedure TMainForm.WriteButtonClick(Sender: TObject);
 var
    h1       : THandle;
    Buffer   : String;
@@ -328,10 +381,14 @@ begin
          BlocksCount := 64;
 
          // make sure that the file exists...
-         h1 := CreateFile(PChar(FileNameEdit.Text), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);
+         h1 := CreateFile(PChar(FileNameEdit.Text), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, 0, 0);
          if h1 <> INVALID_HANDLE_VALUE then
          try
             FileSize := GetFileSize(h1, nil);
+            if FileSize = 0 then
+            begin
+               raise Exception.Create('File ' + FileNameEdit.Text + ' is 0 bytes long');
+            end;
             Blocks := FileSize div 512;
             if (Blocks * 512) < FileSize then
             begin
@@ -346,6 +403,12 @@ begin
             begin
                Device := TWin95Disk.Create;
                TWin95Disk(Device).SetDiskNumber(DriveComboBox.ItemIndex);
+               TWin95Disk(Device).SetOffset(0);
+               // read the 1st sector to settle the disk...
+               try
+                  Device.ReadPhysicalSector(1, 1, PChar(Buffer));
+               except
+               end;
                TWin95Disk(Device).SetOffset(0);
             end
             else
@@ -395,7 +458,7 @@ begin
             else
             begin
                Error := GetLastError;
-               MessageDlg('Error (' + IntToStr(GetLastError) + ')'#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+               MessageDlg('Error ' + IntToStr(GetLastError) + ' opening floppy device'#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
                HadError := True;
             end;
          finally
@@ -404,7 +467,7 @@ begin
          else
          begin
             Error := GetLastError;
-            MessageDlg('Error (' + IntToStr(GetLastError) + ')'#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+            MessageDlg('Error ' + IntToStr(GetLastError) + ' opening image file ''' + FileNameEdit.Text + ''''#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
             HadError := True;
          end;
 
@@ -472,7 +535,7 @@ begin
    end;
 end;
 
-procedure TMainForm.Button5Click(Sender: TObject);
+procedure TMainForm.ReadButtonClick(Sender: TObject);
 var
    h1       : THandle;
    Buffer   : String;
@@ -526,6 +589,11 @@ begin
             Device := TWin95Disk.Create;
             TWin95Disk(Device).SetDiskNumber(DriveComboBox.ItemIndex);
             TWin95Disk(Device).SetOffset(0);
+            // read the 1st sector to settle the disk...
+            try
+               Device.ReadPhysicalSector(1, 1, PChar(Buffer));
+            except
+            end;
          end
          else
          begin
@@ -588,15 +656,17 @@ end;
 procedure TMainForm.TabSheet3Show(Sender: TObject);
 begin
    Memo1.Text :=
-'RawWrite for windows version 0.4'#13#10+
+'RawWrite for windows version ' + AutoUpdate1.Version + #13#10+
 'Written by John Newbigin'#13#10+
 'Copyright (C) 2000 John Newbigin'#13#10+
 ''#13#10+
 'Under 95, this program requires diskio.dll.'#13#10+
 ''#13#10+
 'This program is a replacement for the traditional command'#13#10+
-'line rawrite.  This version works under Windows NT 4,'#13#10+
-'Windows 2000, Windows 95, Windows 98 & Windows ME.'#13#10+
+'line rawrite.  This version works under Windows NT 4, and'#13#10+
+'derived versions like Windows 2000 and Windows XP.  It'#13#10+
+'also works under Windows 95 and derived versions like'#13#10+
+'Windows 98 and Windows ME.'#13#10+
 ''#13#10+
 'It should be very easy to use, just select the drive you want'#13#10+
 'to use, select the image file and hit read or write.'#13#10+
@@ -605,9 +675,12 @@ begin
 '1.44 disks is supported at this time.  Writing to 1.2 drives'#13#10+
 'might work.'#13#10+
 ''#13#10+
-'If your floppy drive is not listed in the combo box, please'#13#10+
-'send me an e-mail and I will try and fix the problem.'#13#10+
+'Other disk sizes are not supported because this application'#13#10+
+'does not format the disks it just reads and writes it.  If'#13#10+
+'you want to use a non-standard disk size, you will need'#13#10+
+'another tool.'#13#10+
 ''#13#10+
+
 'Copyright'#13#10+
 '========='#13#10+
 'This program is free software; you can redistribute it and/or'#13#10+
@@ -627,6 +700,32 @@ begin
 'Free Software Foundation, Inc., 675 Mass Ave, Cambridge,'#13#10+
 'MA 02139, USA.'
 
+end;
+
+procedure TMainForm.TabSheet5Show(Sender: TObject);
+begin
+   Memo2.Text :=
+'Command Line Parameters'#13#10+
+'======================='#13#10+
+'This version supports command line parameters.'#13#10+
+''#13#10+
+'To write an image, the command is'#13#10+
+'rawwritewin [--write] [--copies n] [--drive driveno] file.img'#13#10+
+''#13#10+
+'To read an image, the command is'#13#10+
+'rawwritewin --read [--drive driveno] file.img'#13#10+
+'If file.img already exists it will be overwritten'#13#10+
+''#13#10+
+'driveno is the index of the drive as shown when rawwritewin'#13#10+
+'is run interactivly.  The default is 0 which is the first drive'#13#10+
+'listed'#13#10+
+'';
+
+end;
+
+procedure TMainForm.Button6Click(Sender: TObject);
+begin
+   AutoUpdate1.CheckForUpgrade(True);
 end;
 
 end.

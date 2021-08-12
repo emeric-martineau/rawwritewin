@@ -38,11 +38,16 @@ type
   end;
 
 implementation
+uses Forms, sysutils;
 
 constructor T95Disk.Create;
+var
+   Path : String;
 begin
+   Path := ExtractFilePath(Application.ExeName) + 'Diskio.DLL';
+   //ShowMessage('Loading ' + Path);
    try
-      DLLHandle := LoadLib16('Diskio.DLL');
+      DLLHandle := LoadLib16(Path);
       Ready := False;
    except
       on E : EFOpenError do

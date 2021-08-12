@@ -198,21 +198,6 @@ object MainForm: TMainForm
     ParentFont = False
     OnClick = Label5Click
   end
-  object Label6: TLabel
-    Left = 168
-    Top = 32
-    Width = 114
-    Height = 13
-    Cursor = crDrag
-    Caption = 'mailto:jn@it.swin.edu.au'
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clBlue
-    Font.Height = -11
-    Font.Name = 'MS Sans Serif'
-    Font.Style = [fsUnderline]
-    ParentFont = False
-    OnClick = Label5Click
-  end
   object StatusBar1: TStatusBar
     Left = 0
     Top = 330
@@ -256,7 +241,7 @@ object MainForm: TMainForm
     Top = 88
     Width = 329
     Height = 193
-    ActivePage = TabSheet3
+    ActivePage = TabSheet1
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Write'
@@ -306,14 +291,14 @@ object MainForm: TMainForm
         TabOrder = 2
         Visible = False
       end
-      object Button2: TButton
+      object WriteButton: TButton
         Left = 238
         Top = 132
         Width = 75
         Height = 25
         Caption = '&Write'
         TabOrder = 3
-        OnClick = Button2Click
+        OnClick = WriteButtonClick
       end
       object WriteCopyEdit: TEdit
         Left = 104
@@ -368,14 +353,14 @@ object MainForm: TMainForm
         TabOrder = 1
         OnClick = Button4Click
       end
-      object Button5: TButton
+      object ReadButton: TButton
         Left = 238
         Top = 132
         Width = 75
         Height = 25
         Caption = '&Read'
         TabOrder = 2
-        OnClick = Button5Click
+        OnClick = ReadButtonClick
       end
     end
     object TabSheet4: TTabSheet
@@ -403,19 +388,100 @@ object MainForm: TMainForm
         TabOrder = 0
       end
     end
+    object TabSheet5: TTabSheet
+      Caption = 'Help'
+      ImageIndex = 4
+      OnShow = TabSheet5Show
+      object Memo2: TMemo
+        Left = 8
+        Top = 8
+        Width = 305
+        Height = 153
+        ScrollBars = ssVertical
+        TabOrder = 0
+      end
+    end
+    object TabSheet6: TTabSheet
+      Caption = 'Support'
+      ImageIndex = 5
+      object Label12: TLabel
+        Left = 8
+        Top = 8
+        Width = 193
+        Height = 41
+        AutoSize = False
+        Caption = 'To report bugs in this program, contact me'
+        WordWrap = True
+      end
+      object Label6: TLabel
+        Left = 200
+        Top = 8
+        Width = 114
+        Height = 13
+        Cursor = crDrag
+        Caption = 'mailto:jn@it.swin.edu.au'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clBlue
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsUnderline]
+        ParentFont = False
+        OnClick = Label5Click
+      end
+      object Label13: TLabel
+        Left = 8
+        Top = 48
+        Width = 305
+        Height = 49
+        AutoSize = False
+        Caption = 
+          'If you are having trouble installing Linux, please use the docum' +
+          'entation provided with your distribution.  I am too busy to prov' +
+          'ide specific installation support.'
+        WordWrap = True
+      end
+      object Label14: TLabel
+        Left = 8
+        Top = 96
+        Width = 217
+        Height = 41
+        AutoSize = False
+        Caption = 
+          'Before reporting a problem with rawwrite, please make sure you a' +
+          're running the latest version'
+        WordWrap = True
+      end
+      object Button6: TButton
+        Left = 232
+        Top = 96
+        Width = 75
+        Height = 25
+        Caption = '&Check'
+        TabOrder = 0
+        OnClick = Button6Click
+      end
+    end
   end
   object OpenDialog1: TOpenDialog
     Filter = 'All files (*.*)|*.*|Image files (*.img)|*.img'
     FilterIndex = 2
     Options = [ofFileMustExist]
-    Left = 200
+    Left = 288
     Top = 80
   end
   object SaveDialog1: TSaveDialog
     Filter = 'All files (*.*)|*.*|Image files (*.img)|*.img'
     FilterIndex = 2
-    Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
-    Left = 240
+    Options = [ofOverwritePrompt, ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 320
     Top = 80
+  end
+  object AutoUpdate1: TAutoUpdate
+    ApplicationName = 'rawwrite'
+    URL = 'http://itig.it.swin.edu.au/autoupdate.php'
+    Version = '0.7'
+    VersionNumber = 7
+    Left = 296
+    Top = 40
   end
 end
