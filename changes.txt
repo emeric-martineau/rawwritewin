@@ -1,3 +1,8 @@
+Version 0.9
+-----------
+better list drive in internal use
+possibility to change label of FAT,FAT12/16, FAT32, Ext2/3/4, HPS (Macintosh), ISO 9660, ISO 9660 bootable, ISO 9660 Windows label
+
 Version 0.8
 -----------
 Add support theme for Windows XP

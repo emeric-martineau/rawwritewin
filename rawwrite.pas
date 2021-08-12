@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, ComCtrls, ExtCtrls, BlockDev, WinIOCTL, IniFiles ; //, AutoUpdate;
+  StdCtrls, ComCtrls, ExtCtrls, BlockDev, WinIOCTL, IniFiles, SystemFileProcedurale ; // SystemFile , AutoUpdate;
 
 const
    DebugHigh = 0;
@@ -48,10 +48,22 @@ type
     Label6: TLabel;
     Label13: TLabel;
     Label14: TLabel;
-    TabSheet7: TTabSheet;
-    DebugMemo: TMemo;
+    TabSheet8: TTabSheet;
     CancelButton: TButton;
     CancelButton2: TButton;
+    TabSheet7: TTabSheet;
+    DebugMemo: TMemo;
+    Label15: TLabel;
+    Label16: TLabel;
+    FileNameEditLabel: TEdit;
+    Button2: TButton;
+    Label17: TLabel;
+    Label18: TLabel;
+    Label19: TLabel;
+    FileSystemLabel: TLabel;
+    Label20: TLabel;
+    NewLabel: TEdit;
+    WriteLabelButton: TButton;
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure DriveComboBoxDrawItem(Control: TWinControl; Index: Integer;
@@ -63,15 +75,16 @@ type
     procedure ReadButtonClick(Sender: TObject);
     procedure CancelButton2Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure Button2Click(Sender: TObject);
+    procedure WriteLabelButtonClick(Sender: TObject);
   private
     StopRead : Boolean ;
     yes : boolean ;
+    DrivesList : TStringList ;
     procedure FindNTFloppy;
-    function GetDrive(texte : string):string;
     procedure ReadLanguageFile() ;
     procedure TranslateText(texte : string; Memo : TMemo) ;
     procedure SelectDisk(drive : string) ;
-    function GetPhysicalDriveNumber(texte : string) : string ;
   public
     { Public declarations }
     procedure FindFloppy;
@@ -98,8 +111,16 @@ var
   WriteSuccessFull2 : string = 'Image successfully written.  Insert next disk' ;
   WriteFailed : string = 'Image was not successfully written.' ;
   WriteSuccessFull3 : string = 'Image successfully written.' ;
+  NoDriveFound : String = 'No drive found' ;
+  DiskLabel : string = 'Disk' ;    
+  WriteLabelOk : string = 'New label as written' ;
+  FileSystemNotSupported : string = 'Filesytem are not supported' ; 
+  WriteLabelError : string = 'Write error' ;
+  LabelTooLong : string = 'Label is too long' ;
+  CanOpenImageToWriteLabel : string = 'Can''t open image to write new label. File is readonly ?' ;
+
 const
-  VERSION : string = '0.8' ;
+  VERSION : string = '0.9' ;  
 
 function ReadFile2(hFile: THandle; Buffer : Pointer; nNumberOfBytesToRead: DWORD;
    var lpNumberOfBytesRead: DWORD; lpOverlapped: POverlapped): BOOL; stdcall;
@@ -149,10 +170,14 @@ var
    CmdDrive : String;
    i : Integer;
 begin
+   DrivesList := TStringList.Create() ;
+   
    yes := false ;
    
    Caption := Caption + ' ' + VERSION ;
 
+   FileSystemLabel.Caption := '' ;
+   
    ReadLanguageFile() ;
 
    // Charge l'icone de la main de Windows plutôt que de delphi
@@ -170,7 +195,7 @@ begin
    end
    else
    begin
-      MessageDlg('No drives found', mtInformation, [mbOK], 0);
+      MessageDlg(NoDriveFound, mtInformation, [mbOK], 0);
    end;
 
    PageControl1.ActivePage := TabSheet1;
@@ -313,6 +338,7 @@ begin
 
                 // DriveComboBox.Items.Add(tmp) ;
                 DriveComboBox.Items.Add(String(ShInfo1.szDisplayName)) ;
+                DrivesList.Add(Chr(97 + iDL)) ;
             end ;
         end ;
     end ;
@@ -371,12 +397,13 @@ begin
 
             end ;
 
-            DriveComboBox.Items.Add('Disk ' + IntToStr(i) + ' [' + IntToStr(taille) + tmp + ']') ;
+            DriveComboBox.Items.Add(DiskLabel + IntToStr(i) + ' [' + IntToStr(taille) + tmp + ']') ;
+            DrivesList.Add(IntToStr(i)) ;
         end
         else
             break ;
-            
-        CloseHandle(hDrive) ;            
+
+        Windows.CloseHandle(hDrive) ;
     end ;
 end;
 
@@ -398,7 +425,7 @@ begin
     with Control as TComboBox do
     begin
         { Récupère les informations liés au lecteur }
-        SHGetFileInfo(PChar(GetDrive(Items[Index]) + ':\'), 0, ShInfo1, sizeOF(SHFILEINFO), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_DISPLAYNAME) ;
+        SHGetFileInfo(PChar(DrivesList[DriveComboBox.ItemIndex] + ':\'), 0, ShInfo1, sizeOF(SHFILEINFO), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_DISPLAYNAME) ;
 
         { Dessine l'icône }
         DrawIconEx(Bmp1.Canvas.Handle, 0, 0, ShInfo1.hIcon, 0, 0, 0, 0, DI_NORMAL) ;
@@ -464,13 +491,12 @@ begin
       exit;
    end;
 
-   tmp := GetDrive(DriveComboBox.Text) ;
-   if (tmp <> '')
+   tmp := DrivesList[DriveComboBox.ItemIndex] ;
+   if (UpCase(tmp[1]) in ['A'..'Z'])
    then begin
        tmp := '\\.\' + tmp + ':' ;
    end
    else begin
-       tmp := GetPhysicalDriveNumber(DriveComboBox.Text) ;
        tmp := '\\.\PHYSICALDRIVE' + tmp ;
    end ;   
 
@@ -484,7 +510,7 @@ begin
    then
        DeviceIoControl(hDrive, IOCTL_DISK_GET_DRIVE_GEOMETRY, nil, 0, @tGem, sizeof(tGem), bytesReturned, nil);
 
-   CloseHandle(hDrive) ;
+   Windows.CloseHandle(hDrive) ;
 
    if tGem.BytesPerSector = 0
    then
@@ -584,7 +610,7 @@ begin
                HadError := True;
             end;
          finally
-            CloseHandle(h1);
+            Windows.CloseHandle(h1);
          end
          else
          begin
@@ -696,13 +722,12 @@ begin
       exit;
    end;
 
-   tmp := GetDrive(DriveComboBox.Text) ;
-   if (tmp <> '')
+   tmp := DrivesList[DriveComboBox.ItemIndex] ;
+   if (UpCase(tmp[1]) in ['A'..'Z'])
    then begin
        tmp := '\\.\' + tmp + ':' ;
    end
    else begin
-       tmp := GetPhysicalDriveNumber(DriveComboBox.Text) ;
        tmp := '\\.\PHYSICALDRIVE' + tmp ;
    end ;   
 
@@ -714,7 +739,7 @@ begin
    then
        DeviceIoControl(hDrive, IOCTL_DISK_GET_DRIVE_GEOMETRY, nil, 0, @tGem, sizeof(tGem), bytesReturned, nil);
 
-   CloseHandle(hDrive) ;
+   Windows.CloseHandle(hDrive) ;
 
    try
 
@@ -743,7 +768,7 @@ begin
          then begin
              Debug(ErrorGetParameterOfDisk,  DebugHigh) ;
 
-             tmp2 := GetDrive(DriveComboBox.Text) ;
+             tmp2 := DrivesList[DriveComboBox.ItemIndex] ;
 
              if (GetDiskFreeSpaceEx(PChar(tmp2 + ':'), lpFreeBytesAvailableToCaller, lpTotalNumberOfBytes, @lpTotalNumberOfFreeBytes)) and (tGem.BytesPerSector > 0)
              then begin
@@ -812,7 +837,7 @@ begin
             MessageDlg(Format(ErrorMsg, [GetLastError]) + #10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
          end;
       finally
-         CloseHandle(h1);
+         Windows.CloseHandle(h1);
       end
       else
       begin
@@ -833,15 +858,6 @@ begin
    CancelButton.Enabled := False ;
 end;
 
-function TMainForm.GetDrive(texte : string): string ;
-begin
-   if (texte[length(texte)] = ')') and (texte[length(texte) - 3] = '(')
-   then
-       Result := texte[length(texte) - 2]
-   else
-       Result := '' ;
-end ;
-
 procedure TMainForm.CancelButton2Click(Sender: TObject);
 begin
     StopRead := True ;
@@ -851,6 +867,7 @@ procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
    StopRead := True ;
    TButton(Sender).Enabled := false ;
+   DrivesList.Free ;
 end;
 
 {*******************************************************************************
@@ -877,8 +894,10 @@ begin
     tmp := FichierLangue.ReadString('rawwrite', 'WriteButton', '') ;
 
     if tmp <> ''
-    then
+    then begin
         WriteButton.Caption := tmp ;
+        WriteLabelButton.Caption := tmp ;
+    end ;
 
     tmp := FichierLangue.ReadString('rawwrite', 'Label8', '') ;
 
@@ -889,8 +908,11 @@ begin
     tmp := FichierLangue.ReadString('rawwrite', 'Label1', '') ;
 
     if tmp <> ''
-    then
+    then begin
         Label1.Caption := tmp ;
+        Label7.Caption := tmp ;
+        Label16.Caption := tmp ;
+    end ;
 
     tmp := FichierLangue.ReadString('rawwrite', 'Label11', '') ;
 
@@ -921,12 +943,6 @@ begin
     if tmp <> ''
     then
         Label9.Caption := tmp ;
-
-    tmp := Label1.Caption ;
-
-    if tmp <> ''
-    then
-         Label7.Caption := tmp ;
 
     tmp := CancelButton2.Caption ;
 
@@ -1080,6 +1096,78 @@ begin
     then
         WriteSuccessFull3 := tmp ;
 
+    tmp := FichierLangue.ReadString('rawwrite', 'NoDriveFound', '') ;
+
+    if tmp <> ''
+    then
+        NoDriveFound := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Label', '') ;
+
+    if tmp <> ''
+    then
+        TabSheet8.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'LabelText', '') ;
+
+    if tmp <> ''
+    then
+        Label15.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'FilesystemSupported', '') ;
+
+    if tmp <> ''
+    then
+        Label18.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Filesystem', '') ;
+
+    if tmp <> ''
+    then
+        Label19.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'NewLabel', '') ;
+
+    if tmp <> ''
+    then
+        Label20.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Disk', '') ;
+
+    if tmp <> ''
+    then
+        DiskLabel := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteLabelOk', '') ;
+
+    if tmp <> ''
+    then
+        WriteLabelOk := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'FileSystemNotSupported', '') ;
+
+    if tmp <> ''
+    then
+        FileSystemNotSupported := tmp ;
+        
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteLabelError', '') ;
+
+    if tmp <> ''
+    then
+        WriteLabelError := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'LabelTooLong', '') ;
+
+    if tmp <> ''
+    then
+        LabelTooLong := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'CanOpenImageToWriteLabel', '') ;
+
+    if tmp <> ''
+    then
+        CanOpenImageToWriteLabel := tmp ;
+
     FichierLangue.Free ;
 end ;
 
@@ -1128,10 +1216,7 @@ Var i, nb : integer ;
 
     function finddrive(drive : string; i : integer) : boolean;
     begin
-        if GetDrive(DriveComboBox.Items[i]) = drive
-        then
-            Result := True
-        else if GetPhysicalDriveNumber(DriveComboBox.Items[i]) = drive
+        if DrivesList[DriveComboBox.ItemIndex] = drive
         then
             Result := True
         else
@@ -1158,25 +1243,63 @@ begin
         MessageDlg(DriveNotFound, mtError, [mbOk], 0) ;
 end ;
 
-{*******************************************************************************
- * Get physical drive number.
- * string must be 'Disk XXX'
- ******************************************************************************}
-function TMainForm.GetPhysicalDriveNumber(texte : string) : string ;
-Var i, nb : integer ;
+procedure TMainForm.Button2Click(Sender: TObject);
 begin
-    nb := length(texte) ;
-    Result := '' ;
+   OpenDialog1.FileName := FileNameEdit.Text;
+   
+   if OpenDialog1.Execute then
+   begin
+      FileNameEditLabel.Text := OpenDialog1.FileName;
 
-    for i := 6 to nb do
-    begin
-        if texte[i] in ['0'..'9']
-        then
-            Result := Result + texte[i]
-        else
-            break ;
-    end ;
+      if OpenImage(OpenDialog1.FileName)
+      then begin
+          FileSystemLabel.Caption := GetFSType ;
+          if GetSizeOfLabel = -1
+          then begin
+              NewLabel.Enabled := False ;
+              WriteLabelButton.Enabled := False ;
+              WriteLabelButton.Enabled := False ;
+              NewLabel.Color := clBtnFace ;
+              NewLabel.Text := '' ;
+          end
+          else begin
+              NewLabel.Enabled := True ;
+              WriteLabelButton.Enabled := True ;
+              NewLabel.Text := ReadLabel ;
+              NewLabel.MaxLength := GetSizeOfLabel ;
+              NewLabel.Color := clWindow ;
+          end ;
 
+          if toUpperCase = True
+          then
+              NewLabel.CharCase := ecUpperCase
+          else
+              NewLabel.CharCase := ecNormal ;
+
+          CloseImage() ;
+      end
+      else
+          MessageDlg(Format(ErrorOpeningImage, [GetLastError]) + FileNameEdit.Text + #10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+   end;
+end;
+
+procedure TMainForm.WriteLabelButtonClick(Sender: TObject);
+begin
+    if OpenImage(FileNameEditLabel.Text)
+    then begin     
+        case WriteLabel(NewLabel.Text) of
+            WRITE_OK : MessageDlg(WriteLabelOk, mtInformation, [mbOK], 0) ;
+            FILESYSTEM_NOT_SUPPORTED : MessageDlg(FileSystemNotSupported, mtError, [mbOK], 0) ;
+            WRITE_ERROR : MessageDlg(WriteLabelError, mtError, [mbOK], 0) ;
+            LABEL_TOO_LONG : MessageDlg(LabelTooLong, mtError, [mbOK], 0) ;
+            CANT_OPEN_TO_WRITE : MessageDlg(CanOpenImageToWriteLabel, mtError, [mbOK], 0) ;
+        end ;
+        
+        CloseImage() ;
+    end
+    else
+        MessageDlg(Format(ErrorOpeningImage, [GetLastError]) + FileNameEdit.Text + #10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+    
 end ;
 
 end.

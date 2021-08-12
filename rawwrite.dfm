@@ -4,7 +4,7 @@ object MainForm: TMainForm
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'RawWrite'
-  ClientHeight = 347
+  ClientHeight = 401
   ClientWidth = 359
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -157,7 +157,7 @@ object MainForm: TMainForm
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 328
+    Top = 382
     Width = 359
     Height = 19
     Panels = <
@@ -182,7 +182,7 @@ object MainForm: TMainForm
   end
   object Button3: TButton
     Left = 272
-    Top = 296
+    Top = 352
     Width = 75
     Height = 25
     Caption = 'E&xit'
@@ -193,9 +193,9 @@ object MainForm: TMainForm
     Left = 16
     Top = 88
     Width = 329
-    Height = 193
-    ActivePage = TabSheet1
-    TabIndex = 0
+    Height = 257
+    ActivePage = TabSheet8
+    TabIndex = 5
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Write'
@@ -241,7 +241,7 @@ object MainForm: TMainForm
       end
       object WriteButton: TButton
         Left = 238
-        Top = 132
+        Top = 196
         Width = 75
         Height = 25
         Caption = '&Write'
@@ -269,7 +269,7 @@ object MainForm: TMainForm
       end
       object CancelButton2: TButton
         Left = 8
-        Top = 132
+        Top = 196
         Width = 75
         Height = 25
         Caption = 'Cance&l'
@@ -315,7 +315,7 @@ object MainForm: TMainForm
       end
       object ReadButton: TButton
         Left = 238
-        Top = 132
+        Top = 196
         Width = 75
         Height = 25
         Caption = '&Create'
@@ -324,7 +324,7 @@ object MainForm: TMainForm
       end
       object CancelButton: TButton
         Left = 8
-        Top = 132
+        Top = 196
         Width = 75
         Height = 25
         Caption = 'Cance&l'
@@ -352,7 +352,7 @@ object MainForm: TMainForm
         Left = 8
         Top = 8
         Width = 305
-        Height = 153
+        Height = 217
         Lines.Strings = (
           'RawWrite for windows'
           'Written by John Newbigin'
@@ -399,7 +399,7 @@ object MainForm: TMainForm
         Left = 8
         Top = 8
         Width = 305
-        Height = 153
+        Height = 217
         Lines.Strings = (
           'Command Line Parameters'
           ''
@@ -475,14 +475,110 @@ object MainForm: TMainForm
         WordWrap = True
       end
     end
+    object TabSheet8: TTabSheet
+      Caption = 'Label'
+      ImageIndex = 6
+      object Label15: TLabel
+        Left = 8
+        Top = 8
+        Width = 305
+        Height = 25
+        AutoSize = False
+        Caption = 'Use this tab to update label of image file'
+        Transparent = True
+        WordWrap = True
+      end
+      object Label16: TLabel
+        Left = 8
+        Top = 43
+        Width = 45
+        Height = 13
+        Caption = 'Image file'
+        Transparent = True
+      end
+      object Label17: TLabel
+        Left = 24
+        Top = 208
+        Width = 213
+        Height = 13
+        Caption = 'FAT, FAT12/16, FAT32, ISO 9660, Ext2/3/4'
+        Transparent = True
+      end
+      object Label18: TLabel
+        Left = 8
+        Top = 192
+        Width = 104
+        Height = 13
+        Caption = 'Filesystem supported :'
+        Transparent = True
+      end
+      object Label19: TLabel
+        Left = 8
+        Top = 72
+        Width = 54
+        Height = 13
+        Caption = 'Filesystem :'
+        Transparent = True
+      end
+      object FileSystemLabel: TLabel
+        Left = 104
+        Top = 72
+        Width = 76
+        Height = 13
+        Caption = 'FileSystemLabel'
+        Transparent = True
+      end
+      object Label20: TLabel
+        Left = 8
+        Top = 100
+        Width = 47
+        Height = 13
+        Caption = 'New label'
+      end
+      object FileNameEditLabel: TEdit
+        Left = 104
+        Top = 40
+        Width = 169
+        Height = 21
+        ReadOnly = True
+        TabOrder = 0
+      end
+      object Button2: TButton
+        Left = 280
+        Top = 40
+        Width = 17
+        Height = 21
+        Caption = '...'
+        TabOrder = 1
+        OnClick = Button2Click
+      end
+      object NewLabel: TEdit
+        Left = 104
+        Top = 96
+        Width = 169
+        Height = 21
+        Color = clBtnFace
+        TabOrder = 2
+      end
+      object WriteLabelButton: TButton
+        Left = 240
+        Top = 128
+        Width = 75
+        Height = 25
+        Caption = '&Write'
+        Enabled = False
+        TabOrder = 3
+        OnClick = WriteLabelButtonClick
+      end
+    end
     object TabSheet7: TTabSheet
       Caption = 'Debug'
-      ImageIndex = 6
+      ImageIndex = 7
       object DebugMemo: TMemo
         Left = 8
         Top = 8
         Width = 305
-        Height = 153
+        Height = 217
         ScrollBars = ssVertical
         TabOrder = 0
       end
@@ -490,21 +586,21 @@ object MainForm: TMainForm
   end
   object OpenDialog1: TOpenDialog
     Filter = 
-      'All files (*.*)|*.*|Image files (*.img,*.iso,*.nrg)|*.img;*.iso;' +
-      '*.nrg'
+      'All files (*.*)|*.*|Image files (*.img,*.iso,*.nrg,*.ima)|*.img;' +
+      '*.iso;*.nrg;*.ima'
     FilterIndex = 2
     Options = [ofFileMustExist]
-    Left = 288
-    Top = 80
+    Left = 256
+    Top = 56
   end
   object SaveDialog1: TSaveDialog
     DefaultExt = '.img'
     Filter = 
-      'All files (*.*)|*.*|Image files (*.img,*.iso,*.nrg)|*.img;*.iso;' +
-      '*.nrg'
+      'All files (*.*)|*.*|Image files (*.img,*.iso,*.nrg,*.ima)|*.img;' +
+      '*.iso;*.nrg;*.ima'
     FilterIndex = 2
     Options = [ofOverwritePrompt, ofHideReadOnly, ofPathMustExist, ofEnableSizing]
-    Left = 320
-    Top = 80
+    Left = 288
+    Top = 56
   end
 end

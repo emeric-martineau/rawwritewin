@@ -1,1 +1,4 @@
+Support of windows label for ISO 9660 ?
+NTFS label support
+Partition support
 Compress image support in read and write
