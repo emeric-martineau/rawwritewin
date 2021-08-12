@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, DiskIO, WinIOCTL;
+  StdCtrls, WinIOCTL; // DiskIO
 
 type
 
@@ -18,24 +18,6 @@ type
 
     function Open  : Boolean; virtual; abstract;
     function Close : Boolean; virtual; abstract;
-  end;
-
-  TWin95Disk = class(TBlockDevice)
-  public
-    constructor Create; override;
-    destructor Destroy; override;
-
-    procedure ReadPhysicalSector(Sector : DWORD; count : DWORD; Buffer : Pointer); override;
-    procedure WritePhysicalSector(Sector : DWORD; count : DWORD; Buffer : Pointer); override;
-
-    function Open  : Boolean; override;
-    function Close : Boolean; override;
-
-    function SetDiskNumber(Drive : DWORD) : Boolean;
-    procedure SetOffset(Offset : DWORD);
-  private
-    Disk          : T95Disk;
-    SectorOffset  : DWORD;
   end;
 
   TNTDisk = class(TBlockDevice)
@@ -82,7 +64,7 @@ uses rawwrite;
 constructor TBlockDevice.Create;
 begin
    inherited Create;
-//   Debug('Creating BlockDevice', DebugHigh);
+   Debug('Creating BlockDevice', DebugHigh);
 end;
 
 destructor TBlockDevice.Destroy;
@@ -91,64 +73,6 @@ begin
    inherited Destroy;
 end;
 
-//////////////////////////////
-// TWin95Disk
-//////////////////////////////
-
-// This is a type of block device, which uses a 16bit DLL to access
-// physical disk sectors
-
-constructor TWin95Disk.Create;
-begin
-   inherited Create;
-   Debug('Creating Win95Disk', DebugHigh);
-   Disk := T95Disk.Create;
-end;
-
-destructor TWin95Disk.Destroy;
-begin
-   Debug('Destroying Win95Disk', DebugHigh);
-   Disk.Free;
-   inherited Destroy;
-end;
-
-function TWin95Disk.SetDiskNumber(Drive : DWORD) : Boolean;
-begin
-   Result := Disk.SetDisk(Drive);
-end;
-
-procedure TWin95Disk.SetOffset(Offset : DWORD);
-begin
-   SectorOffset := Offset;
-end;
-
-function TWin95Disk.Open  : Boolean;
-begin
-   Result := True;
-end;
-
-function TWin95Disk.Close : Boolean;
-begin
-   Result := True;
-end;
-
-procedure TWin95Disk.ReadPhysicalSector(Sector : DWORD; count : DWORD; Buffer : Pointer);
-begin
-   Debug('Reading sector ' + IntToStr(Sector) + ' count = ' + IntToStr(count), DebugHigh);
-   if not Disk.ReadSector(Sector + SectorOffset, Buffer, Count) then
-   begin
-      raise Exception.Create('Error reading disk');
-   end;
-end;
-
-procedure TWin95Disk.WritePhysicalSector(Sector : DWORD; count : DWORD; Buffer : Pointer);
-begin
-   Debug('Writing sector ' + IntToStr(Sector) + ' count = ' + IntToStr(count), DebugHigh);
-   if not Disk.WriteSector(Sector + SectorOffset, Buffer, Count) then
-   begin
-      raise Exception.Create('Error writing to disk');
-   end;
-end;
 //////////////////////////////
 // TNTDisk
 //////////////////////////////

@@ -1,0 +1,5 @@
+* How change language ?
+  Rename lang-xxx.ini into lang.ini
+
+* How write an IMZ file (WinImage crompressed file)
+  Rename file with .zip extention, extract file en write it.

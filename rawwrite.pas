@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, ComCtrls, ExtCtrls, BlockDev, AutoUpdate;
+  StdCtrls, ComCtrls, ExtCtrls, BlockDev, WinIOCTL, IniFiles ; //, AutoUpdate;
 
 const
    DebugHigh = 0;
@@ -14,7 +14,6 @@ type
   TMainForm = class(TForm)
     Label2: TLabel;
     StatusBar1: TStatusBar;
-    FloppyImage: TImage;
     DriveComboBox: TComboBox;
     Label3: TLabel;
     Label4: TLabel;
@@ -27,7 +26,6 @@ type
     FileNameEdit: TEdit;
     Button1: TButton;
     OpenDialog1: TOpenDialog;
-    DebugMemo: TMemo;
     WriteButton: TButton;
     Label7: TLabel;
     ReadFileNameEdit: TEdit;
@@ -50,8 +48,10 @@ type
     Label6: TLabel;
     Label13: TLabel;
     Label14: TLabel;
-    Button6: TButton;
-    AutoUpdate1: TAutoUpdate;
+    TabSheet7: TTabSheet;
+    DebugMemo: TMemo;
+    CancelButton: TButton;
+    CancelButton2: TButton;
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure DriveComboBoxDrawItem(Control: TWinControl; Index: Integer;
@@ -59,19 +59,19 @@ type
     procedure WriteButtonClick(Sender: TObject);
     procedure Label5Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
-    procedure Label3DblClick(Sender: TObject);
     procedure Button4Click(Sender: TObject);
     procedure ReadButtonClick(Sender: TObject);
-    procedure TabSheet3Show(Sender: TObject);
-    procedure TabSheet5Show(Sender: TObject);
-    procedure Button6Click(Sender: TObject);
+    procedure CancelButton2Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
-    { Private declarations }
-    OSis95 : Boolean;
-
-    procedure Find95Floppy;
+    StopRead : Boolean ;
+    yes : boolean ;
     procedure FindNTFloppy;
-
+    function GetDrive(texte : string):string;
+    procedure ReadLanguageFile() ;
+    procedure TranslateText(texte : string; Memo : TMemo) ;
+    procedure SelectDisk(drive : string) ;
+    function GetPhysicalDriveNumber(texte : string) : string ;
   public
     { Public declarations }
     procedure FindFloppy;
@@ -81,7 +81,25 @@ type
 
 var
   MainForm: TMainForm;
-
+  WriteWarning : String = 'Are you sur you want erase destination disk ?' ;
+  WarningTitle : String = 'Warning' ;
+  DriveNotFound : String = 'Drive not found !' ;
+  FileNotFound : String = 'Specified file not found' ;
+  DiskText : string = 'Disk %d of %d' ;
+  ErrorOpeningDisk : string = 'Error (%d) opening disk' ;
+  ErrorOpeningImage : string = 'Error (%d) opening image file' ;
+  ErrorMsg : string = 'Error (%d)' ;
+  Aborted : string = 'Cancel' ;
+  Finish : string = 'Ok' ;
+  PleaseSelectDrive : string = 'Please Select a disk drive' ;
+  ErrorGetParameterOfDisk : string = 'Can''t get disk parameter' ;
+  UnknowLineOption : string = 'Unknown command line option' ;
+  WriteSuccessFull : string = 'The image was not successfully written.  Do you want to continue with the remaining %d copies ?' ;
+  WriteSuccessFull2 : string = 'Image successfully written.  Insert next disk' ;
+  WriteFailed : string = 'Image was not successfully written.' ;
+  WriteSuccessFull3 : string = 'Image successfully written.' ;
+const
+  VERSION : string = '0.8' ;
 
 function ReadFile2(hFile: THandle; Buffer : Pointer; nNumberOfBytesToRead: DWORD;
    var lpNumberOfBytesRead: DWORD; lpOverlapped: POverlapped): BOOL; stdcall;
@@ -92,7 +110,7 @@ procedure Debug(Str : String; Level : Integer);
 
 implementation
 
-uses DiskIO, ShellAPI;
+uses ShellAPI; // DiskIO
 
 {$R *.DFM}
 
@@ -125,77 +143,45 @@ end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 var
-   Version : TOSVersionInfo;
-   VersionString : String;
-   CommandLine : Boolean;
    CmdRead : Boolean;
    CmdCopies : Integer;
    CmdImage : String;
-   CmdDrive : Integer;
+   CmdDrive : String;
    i : Integer;
 begin
+   yes := false ;
+   
+   Caption := Caption + ' ' + VERSION ;
+
+   ReadLanguageFile() ;
+
+   // Charge l'icone de la main de Windows plutôt que de delphi
+   Screen.Cursors[crHandPoint] := LoadCursor(0, IDC_HAND);
+
    // Prevent error messages being displayed by NT
    SetErrorMode(SEM_FAILCRITICALERRORS);
 
-   // what OS
-   Version.dwOSVersionInfoSize := Sizeof(Version);
-   if GetVersionEx(Version) then
-   begin
-      case Version.dwPlatformId of
-         VER_PLATFORM_WIN32s        : VersionString := 'WIN32s';
-         VER_PLATFORM_WIN32_WINDOWS : VersionString := 'Windows 95';
-         VER_PLATFORM_WIN32_NT      : VersionString := 'Windows NT';
-      else
-         VersionString := 'Unknown OS';
-      end;
-      VersionString := VersionString + ' ' + IntToStr(Version.dwMajorVersion) +
-                                       '.' + IntToStr(Version.dwMinorVersion) +
-                                       ' build number ' + IntToStr(Version.dwBuildNumber);
-      StatusBar1.Panels[2].Text := VersionString;
-      if Version.dwPlatformId = VER_PLATFORM_WIN32_WINDOWS then
-      begin
-         OSis95 := True;
-      end
-      else
-      begin
-         OSis95 := False;
-      end;
-   end
-   else
-   begin
-      MessageDlg('Could not get Version info!', mtError, [mbOK], 0);
-   end;
+
    FindFloppy;
+
    if DriveComboBox.Items.Count > 0 then
    begin
       DriveComboBox.ItemIndex := 0;
    end
    else
    begin
-      MessageDlg('No Floppy drives found', mtInformation, [mbOK], 0);
-   end;
-
-   if OSis95 then
-   begin
-      if not FileExists('diskio.dll') then
-      begin
-         if MessageDlg('You seem to be missing diskio.dll.  RawWrite can automaticly download it for you.  Do you want to download it now?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-         begin
-            AutoUpdate1.GetFile('diskio.dll');
-         end;
-      end;
+      MessageDlg('No drives found', mtInformation, [mbOK], 0);
    end;
 
    PageControl1.ActivePage := TabSheet1;
 
    if ParamCount > 0 then
    begin
-      CommandLine := True;
       CmdRead := False;
       CmdCopies := 1;
-      CmdDrive := 0;
+      CmdDrive := '';
 
-      i := 1;
+      i := 1 ;
       while i <= ParamCount do
       begin
          if ParamStr(i) = '--read' then
@@ -217,15 +203,20 @@ begin
          else if ParamStr(i) = '--drive' then
          begin
             Inc(i);
-            CmdDrive := StrToIntDef(ParamStr(i), 0);
+            CmdDrive := ParamStr(i);
             Inc(i);
+         end
+         else if ParamStr(i) = '--yes' then
+         begin
+            Inc(i);
+            yes := true ;
          end
          else
          begin
             if Pos('--', ParamStr(i)) = 1 then
             begin
                // unknown command
-               MessageDlg('Unknown command line option ''' + ParamStr(i) + '''', mtError, [mbOK], 0);
+               MessageDlg(UnknowLineOption + ' ''' + ParamStr(i) + '''', mtError, [mbOK], 0);
                break;
             end
             else
@@ -243,7 +234,8 @@ begin
          try
             // do a command line read
             ReadFileNameEdit.Text := CmdImage;
-            DriveComboBox.ItemIndex := CmdDrive;
+            SelectDisk(CmdDrive) ;
+            //DriveComboBox.ItemIndex := CmdDrive;
             ReadButtonClick(ReadButton);
          except
             on E : Exception do
@@ -259,7 +251,8 @@ begin
          try
             WriteCopyEdit.Text := IntToStr(CmdCopies);
             FileNameEdit.Text := CmdImage;
-            DriveComboBox.ItemIndex := CmdDrive;
+            SelectDisk(CmdDrive) ;
+            //DriveComboBox.ItemIndex := CmdDrive;
             WriteButtonClick(WriteButton);
          except
             on E : Exception do
@@ -270,73 +263,156 @@ begin
          Application.Terminate;
       end;
 
-   end
-   else
-   begin
-      CommandLine := False;
-   end;
+   end ;
 end;
 
 procedure TMainForm.FindFloppy;
 begin
-   if OSis95 then
-   begin
-      Find95Floppy;
-   end
-   else
-   begin
       FindNTFloppy;
-   end;
-end;
-
-procedure TMainForm.Find95Floppy;
-begin
-   // just add a and b ...? at least for now
-   DriveComboBox.Items.Add('A:');
-   DriveComboBox.Items.Add('B:');
 end;
 
 procedure TMainForm.FindNTFloppy;
 var
-   Drive : Char;
-   h : THandle;
-   FileName : String;
-   Error : DWORD;
+    { Liste des lecteurs présents }
+    DriveList : DWORD ;
+    { compteur et masque }
+    iDL : BYTE ;
+    jDL : DWORD ;
+    tmp : string ;
+    TypeLecteur : Integer ;
+    i : SmallInt ;
+    hDrive   : THandle ;
+    ShInfo1 : SHFILEINFO ;
+    tGem : TDISK_GEOMETRY ;
+    taille : int64 ;
+    bytesReturned : DWORD ;
 begin
-   for Drive := 'A' to 'B' do
-   begin
-      FileName := '\\.\' + Drive + ':';
-      h := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, 0, 0);
-      if h <> INVALID_HANDLE_VALUE then
-      begin
-         DriveComboBox.Items.Add(FileName);
-         CloseHandle(h);
-      end
-      else
-      begin
-         Error := GetLastError;
-         if Error = 21 then
-         begin
-            DriveComboBox.Items.Add(FileName);
-         end
-         else
-         begin
-            Debug(FileName, DebugLow);
-            Debug(IntToStr(Error) + #10 + SysErrorMessage(Error), DebugLow);
-         end;
-      end;
-   end;
+    { Récupère la liste des lecteurs }
+    DriveList := GetLogicalDrives() ;
+
+    { Ajoute les Lecteur }
+    for iDL := 0 to 25 do
+    begin
+        jDL := DriveList and (1 shl iDL) ;
+
+        if jDL <> 0
+        then begin
+            { Lecteur }
+            tmp := Chr(97 + iDL) + ':' ;
+
+            { Lit le type de lecteur }
+            TypeLecteur := GetDriveType(PChar(tmp)) ;
+
+            { Si c'est un CD-ROM ou un disque amovible, ils peuvent être ejecté }
+             if (TypeLecteur = DRIVE_CDROM) or (TypeLecteur = DRIVE_REMOVABLE) or
+            //if (TypeLecteur = DRIVE_REMOVABLE) or
+               (TypeLecteur = DRIVE_RAMDISK)  or (TypeLecteur = DRIVE_FIXED)
+            then begin
+                { Récupère les informations liés au lecteur }
+                SHGetFileInfo(PChar(tmp + '\'), 0, ShInfo1, sizeOF(SHFILEINFO), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_DISPLAYNAME) ;
+
+                // DriveComboBox.Items.Add(tmp) ;
+                DriveComboBox.Items.Add(String(ShInfo1.szDisplayName)) ;
+            end ;
+        end ;
+    end ;
+
+    // lecture des disques physiques
+    for i := 0 to 255 do
+    begin
+        // tente d'ouvrir les Drives 0,1,2,3,.....
+        // s'arrête à la première erreur (hdrive=-1)
+        hDrive := CreateFile(PChar('\\.\PHYSICALDRIVE' + IntToStr(i)), GENERIC_READ, FILE_SHARE_READ Or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0) ;
+
+        if hDrive <> INVALID_HANDLE_VALUE
+        then begin
+            DeviceIoControl(hDrive, IOCTL_DISK_GET_DRIVE_GEOMETRY, nil, 0, @tGem, sizeof(tGem), bytesReturned, nil);
+            
+            taille := tGem.TracksPerCylinder * tGem.SectorsPerTrack * tGem.Cylinders.QuadPart * tGem.BytesPerSector ;
+            
+            if taille < (1024)
+            then begin
+                tmp := ' bytes' ;
+            end
+            else begin
+                taille := taille div 1024 ;
+
+                if taille < (1024)
+                then begin
+                    tmp := ' Kb' ;
+                end
+                else begin
+                    taille := taille div 1024 ;
+
+                    if taille < (1024)
+                    then begin
+                        tmp := ' Mb' ;
+                    end
+                    else begin
+                        taille := taille div 1024 ;
+
+                        if taille < (1024)
+                        then begin
+                            tmp := ' Gb' ;
+                        end
+                        else begin
+                            taille := taille div 1024 ;
+
+                            if taille < (1024)
+                            then begin
+                                tmp := ' Tb' ;
+                            end
+                            else begin
+                                tmp := ' ???' ;
+                            end ;
+                        end ;
+                    end ;
+                end ;
+
+            end ;
+
+            DriveComboBox.Items.Add('Disk ' + IntToStr(i) + ' [' + IntToStr(taille) + tmp + ']') ;
+        end
+        else
+            break ;
+            
+        CloseHandle(hDrive) ;            
+    end ;
 end;
 
 procedure TMainForm.DriveComboBoxDrawItem(Control: TWinControl;
   Index: Integer; Rect: TRect; State: TOwnerDrawState);
+var Bmp1 : TBitmap ;
+    ShInfo1 : SHFILEINFO ;
 begin
-   with Control as TComboBox do
-   begin
-      // draw the icon
-      Canvas.Draw(Rect.Left + 2, Rect.Top + 3, FloppyImage.Picture.Graphic);
-      Canvas.TextOut(Rect.Left + 20, Rect.Top, Items[Index]);
-   end;
+    { Créer le BMP }
+    Bmp1 := TBitmap.Create() ;
+    { Définir la couleur de transparence }
+    Bmp1.Canvas.Brush.Color := clMenu ;
+    Bmp1.Canvas.Pen.Color := clMenu ;
+    { Active la transparence. Prend le pixel 1:1 }
+    Bmp1.Transparent := True ;
+    Bmp1.Width := 16;
+    Bmp1.Height := 16;
+
+    with Control as TComboBox do
+    begin
+        { Récupère les informations liés au lecteur }
+        SHGetFileInfo(PChar(GetDrive(Items[Index]) + ':\'), 0, ShInfo1, sizeOF(SHFILEINFO), SHGFI_ICON or SHGFI_SMALLICON or SHGFI_DISPLAYNAME) ;
+
+        { Dessine l'icône }
+        DrawIconEx(Bmp1.Canvas.Handle, 0, 0, ShInfo1.hIcon, 0, 0, 0, 0, DI_NORMAL) ;
+
+        // draw the icon
+        // disable show bug
+        Canvas.Pen.Color := clWindow ;
+        Canvas.Rectangle(Rect.Right, Rect.Top, Rect.Left, Rect.Bottom);
+        Canvas.Draw(Rect.Left, Rect.Top, Bmp1);
+
+        Canvas.TextOut(Rect.Left + 20, Rect.Top, Items[Index]);
+    end;
+
+   Bmp1.Free ;
 end;
 
 procedure TMainForm.WriteButtonClick(Sender: TObject);
@@ -344,7 +420,6 @@ var
    h1       : THandle;
    Buffer   : String;
    Read     : DWORD;
-   Written  : DWORD;
    Blocks   : Integer;
    WrittenBlocks  : Integer;
    BlocksCount    : Integer;
@@ -352,31 +427,81 @@ var
    BlockCount     : Integer;
    FileSize  : Integer;
    CopiesRemaining : Integer;
-
    Device   : TBlockDevice;
    Zero     : _Large_Integer;
    DiskSize : _Large_Integer;
    HadError : Boolean;
    DiskNumber : Integer;
    Error : DWORD;
+   tmp : string ;
+   tGem : TDISK_GEOMETRY ;
+   hDrive   : THandle;
+   bytesReturned : DWORD ;   
 begin
+   if not FileExists(FileNameEdit.Text)
+   then begin
+       MessageDlg(FileNotFound, mtWarning, [mbOK], 0);
+       exit ;
+   end ;
+
+   if yes = false
+   then
+       if Application.MessageBox(PChar(WriteWarning), PChar(WarningTitle), MB_YESNO or MB_ICONWARNING or MB_DEFBUTTON2) = ID_NO
+       then
+           exit ;
+
+   Wait;
+   
+   DebugMemo.Clear ;
+
+   CancelButton2.Enabled := True ;
+   
+   StopRead := False ;
+
    if DriveComboBox.ItemIndex < 0 then
    begin
-      MessageDlg('Please Select a disk drive', mtWarning, [mbOK], 0);
+      MessageDlg(PleaseSelectDrive, mtWarning, [mbOK], 0);
       exit;
    end;
 
+   tmp := GetDrive(DriveComboBox.Text) ;
+   if (tmp <> '')
+   then begin
+       tmp := '\\.\' + tmp + ':' ;
+   end
+   else begin
+       tmp := GetPhysicalDriveNumber(DriveComboBox.Text) ;
+       tmp := '\\.\PHYSICALDRIVE' + tmp ;
+   end ;   
+
    HadError := False;
 
-   Wait;
+   FillChar(tGem, sizeof(tGem), 0) ;
+
+   hDrive := CreateFile(PChar(tmp), GENERIC_READ, FILE_SHARE_READ Or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0) ;
+
+   if hDrive <> INVALID_HANDLE_VALUE
+   then
+       DeviceIoControl(hDrive, IOCTL_DISK_GET_DRIVE_GEOMETRY, nil, 0, @tGem, sizeof(tGem), bytesReturned, nil);
+
+   CloseHandle(hDrive) ;
+
+   if tGem.BytesPerSector = 0
+   then
+       tGem.BytesPerSector := 512 ;
+
    try
       CopiesRemaining := UpDown1.Position;
       DiskNumber := 0;
 
       while CopiesRemaining > 0 do
       begin
+         if StopRead = True
+         then
+             break ;
+
          DiskNumber := DiskNumber + 1;
-         StatusBar1.Panels[1].Text := 'Disk ' + IntToStr(DiskNumber) + ' of ' + IntToStr(UpDown1.Position);
+         StatusBar1.Panels[1].Text := Format(DiskText, [DiskNumber, UpDown1.Position]);
          CopiesRemaining := CopiesRemaining - 1;
          BlocksCount := 64;
 
@@ -389,37 +514,27 @@ begin
             begin
                raise Exception.Create('File ' + FileNameEdit.Text + ' is 0 bytes long');
             end;
-            Blocks := FileSize div 512;
-            if (Blocks * 512) < FileSize then
+            Blocks := FileSize div tGem.BytesPerSector;
+            if (Blocks * tGem.BytesPerSector) < FileSize then
             begin
                Blocks := Blocks + 1;
             end;
 
             WrittenBlocks := 0;
 
-            SetLength(Buffer, 512 * BlocksCount);
+            SetLength(Buffer, tGem.BytesPerSector * BlocksCount);
+
             // open the drive
-            if osIs95 then
-            begin
-               Device := TWin95Disk.Create;
-               TWin95Disk(Device).SetDiskNumber(DriveComboBox.ItemIndex);
-               TWin95Disk(Device).SetOffset(0);
-               // read the 1st sector to settle the disk...
-               try
-                  Device.ReadPhysicalSector(1, 1, PChar(Buffer));
-               except
-               end;
-               TWin95Disk(Device).SetOffset(0);
-            end
-            else
-            begin
-               Zero.Quadpart := 0;
-               DiskSize.Quadpart := 512 * 80 * 2 * 18;
-               Device := TNTDisk.Create;
-               TNTDisk(Device).SetFileName(DriveComboBox.Text);
-               TNTDisk(Device).SetMode(True);
-               TNTDisk(Device).SetPartition(Zero, DiskSize);
-            end;
+            Zero.Quadpart := 0;
+
+            DiskSize.Quadpart := tGem.BytesPerSector * Blocks;
+
+            Device := TNTDisk.Create;
+
+            TNTDisk(Device).SetFileName(tmp);
+            TNTDisk(Device).SetMode(True);
+            TNTDisk(Device).SetPartition(Zero, DiskSize);
+
 
             if Device.Open then
             try
@@ -437,9 +552,16 @@ begin
                         BlockCount := BlocksRemaining;
                      end;
 
-                     ReadFile2(h1, PChar(Buffer), 512 * BlockCount, Read, nil);
+                     ReadFile2(h1, PChar(Buffer), tGem.BytesPerSector * BlockCount, Read, nil);
                      if Read = 0 then break;
-                     Device.WritePhysicalSector(WrittenBlocks, BlockCount, PChar(Buffer));
+
+                     try
+                         Device.WritePhysicalSector(WrittenBlocks, BlockCount, PChar(Buffer));
+                     except
+                         StopRead := True ;
+                         break ;
+                     end ;
+                     
                      WrittenBlocks := WrittenBlocks + BlockCount;
                      StatusBar1.Panels[0].Text := IntToStr((WrittenBlocks * 100) div Blocks) + '%';
                      Application.ProcessMessages;
@@ -458,7 +580,7 @@ begin
             else
             begin
                Error := GetLastError;
-               MessageDlg('Error ' + IntToStr(GetLastError) + ' opening floppy device'#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+               MessageDlg(Format(ErrorOpeningDisk, [GetLastError]) + #10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
                HadError := True;
             end;
          finally
@@ -467,7 +589,7 @@ begin
          else
          begin
             Error := GetLastError;
-            MessageDlg('Error ' + IntToStr(GetLastError) + ' opening image file ''' + FileNameEdit.Text + ''''#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+            MessageDlg(Format(ErrorOpeningImage, [GetLastError]) + FileNameEdit.Text + #10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
             HadError := True;
          end;
 
@@ -475,7 +597,7 @@ begin
          begin
             if HadError then
             begin
-               if MessageDlg('The image was not successfully written.  Do you want to continue with the remaining ' + IntToStr(CopiesRemaining) + ' copies?', mtConfirmation, [mbYes, mbNo], 0) = mrNo then
+               if MessageDlg(Format(WriteSuccessFull, [CopiesRemaining]), mtConfirmation, [mbYes, mbNo], 0) = mrNo then
                begin
                   CopiesRemaining := 0;
                end
@@ -486,7 +608,7 @@ begin
             end
             else
             begin
-               if MessageDlg('Image successfully written.  Insert next disk', mtInformation, [mbOK, mbCancel], 0) = mrCancel then
+               if MessageDlg(WriteSuccessFull2, mtInformation, [mbOK, mbCancel], 0) = mrCancel then
                begin
                   CopiesRemaining := 0;
                end;
@@ -496,17 +618,26 @@ begin
          begin
             if HadError then
             begin
-               MessageDlg('Image was not successfully written.', mtError, [mbOK], 0);
+               MessageDlg(WriteFailed, mtError, [mbOK], 0);
             end
             else
             begin
-               MessageDlg('Image successfully written.', mtInformation, [mbOK], 0);
+               MessageDlg(WriteSuccessFull3, mtInformation, [mbOK], 0);
             end;
          end;
       end;
    finally
+      CancelButton2.Enabled := True ;   
       UnWait;
    end;
+
+   if StopRead = True
+   then
+       StatusBar1.Panels[0].Text := Aborted
+   else
+       StatusBar1.Panels[0].Text := Finish ;       
+
+   CancelButton2.Enabled := False ;
 end;
 
 procedure TMainForm.Label5Click(Sender: TObject);
@@ -516,14 +647,7 @@ end;
 
 procedure TMainForm.Button3Click(Sender: TObject);
 begin
-   Close;
-end;
-
-procedure TMainForm.Label3DblClick(Sender: TObject);
-begin
-//   This will enable the original write code
-   DebugMemo.Visible    := True;
-//   WriteButton.Visible  := True;
+    Close ;
 end;
 
 procedure TMainForm.Button4Click(Sender: TObject);
@@ -538,28 +662,60 @@ end;
 procedure TMainForm.ReadButtonClick(Sender: TObject);
 var
    h1       : THandle;
+   hDrive   : THandle ;
    Buffer   : String;
    Read     : DWORD;
-   Written  : DWORD;
-   Blocks   : Integer;
+   Blocks   : Int64 ;
    WrittenBlocks  : Integer;
    BlocksCount    : Integer;
    BlocksRemaining : Integer;
    BlockCount     : Integer;
-   FileSize  : Integer;
-
    Device   : TBlockDevice;
    Zero     : _Large_Integer;
    DiskSize : _Large_Integer;
    Error : DWORD;
+   tmp, tmp2 : string ;
+   tGem : TDISK_GEOMETRY ;
+   bytesReturned : DWORD ;
+   // On some CD-ROM drive DeviceIoControl doesn't work
+   lpFreeBytesAvailableToCaller : TLargeInteger;
+   lpTotalNumberOfBytes : TLargeInteger;
+   lpTotalNumberOfFreeBytes : TLargeInteger;
 begin
+   DebugMemo.Clear ;
+   
+   Wait;
+
+   CancelButton.Enabled := True ;
+
+   StopRead := False ;
+   
    if DriveComboBox.ItemIndex < 0 then
    begin
-      MessageDlg('Please Select a disk drive', mtWarning, [mbOK], 0);
+      MessageDlg(PleaseSelectDrive, mtWarning, [mbOK], 0);
       exit;
    end;
 
-   Wait;
+   tmp := GetDrive(DriveComboBox.Text) ;
+   if (tmp <> '')
+   then begin
+       tmp := '\\.\' + tmp + ':' ;
+   end
+   else begin
+       tmp := GetPhysicalDriveNumber(DriveComboBox.Text) ;
+       tmp := '\\.\PHYSICALDRIVE' + tmp ;
+   end ;   
+
+   FillChar(tGem, sizeof(tGem), 0) ;
+
+   hDrive := CreateFile(PChar(tmp), GENERIC_READ, FILE_SHARE_READ Or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0) ;
+
+   if hDrive <> INVALID_HANDLE_VALUE
+   then
+       DeviceIoControl(hDrive, IOCTL_DISK_GET_DRIVE_GEOMETRY, nil, 0, @tGem, sizeof(tGem), bytesReturned, nil);
+
+   CloseHandle(hDrive) ;
+
    try
 
       BlocksCount := 64;
@@ -570,46 +726,59 @@ begin
       try
          // we need to read until the end of the disk
          // all data gets written to the file...
-
-{         FileSize := GetFileSize(h1, nil);
-         Blocks := FileSize div 512;
-         if (Blocks * 512) < FileSize then
-         begin
-            Blocks := Blocks + 1;
-         end;}
-
          WrittenBlocks := 0;
 
-         Blocks := 2880; // no of 512 blocks on a 1.44 (= 80 * 2 * 18)
+//         Blocks := 2880; // no of 512 blocks on a 1.44 (= 80 * 2 * 18)
+         Blocks := tGem.TracksPerCylinder ;
+         Debug('Tracks per cylinder : ' + IntToStr(tGem.TracksPerCylinder), DebugHigh) ;
+         Blocks := Blocks * tGem.SectorsPerTrack ;
+         Debug('Sector per track : ' + IntToStr(tGem.SectorsPerTrack), DebugHigh) ;
+         Blocks := Blocks * tGem.Cylinders.QuadPart ;
+         Debug('Cylinder : ' + IntToStr(tGem.Cylinders.QuadPart), DebugHigh) ;
 
-         SetLength(Buffer, 512 * BlocksCount);
+         Debug('Byte per sector : ' + IntToStr(tGem.BytesPerSector), DebugHigh) ;
+
+         // On some CD-ROM drive DeviceIoControl doesn't work
+         if (Blocks = 0)
+         then begin
+             Debug(ErrorGetParameterOfDisk,  DebugHigh) ;
+
+             tmp2 := GetDrive(DriveComboBox.Text) ;
+
+             if (GetDiskFreeSpaceEx(PChar(tmp2 + ':'), lpFreeBytesAvailableToCaller, lpTotalNumberOfBytes, @lpTotalNumberOfFreeBytes)) and (tGem.BytesPerSector > 0)
+             then begin
+                 Debug('GetDiskFreeSpaceEx ok',  DebugHigh) ;
+                 Blocks := lpTotalNumberOfBytes div tGem.BytesPerSector
+             end
+             else begin
+                 Debug('GetDiskFreeSpaceEx failed or BytesPerSector=0',  DebugHigh) ;
+                 MessageDlg(ErrorGetParameterOfDisk, mtError, [mbOK], 0);
+             end ;
+         end ;
+
+//         SetLength(Buffer, 512 * BlocksCount);
+         SetLength(Buffer, tGem.BytesPerSector * BlocksCount);
+
          // open the drive
-         if osIs95 then
-         begin
-            Device := TWin95Disk.Create;
-            TWin95Disk(Device).SetDiskNumber(DriveComboBox.ItemIndex);
-            TWin95Disk(Device).SetOffset(0);
-            // read the 1st sector to settle the disk...
-            try
-               Device.ReadPhysicalSector(1, 1, PChar(Buffer));
-            except
-            end;
-         end
-         else
-         begin
-            Zero.Quadpart := 0;
-            DiskSize.Quadpart := 512 * 80 * 2 * 18;
-            Device := TNTDisk.Create;
-            TNTDisk(Device).SetFileName(DriveComboBox.Text);
-            TNTDisk(Device).SetMode(True);
-            TNTDisk(Device).SetPartition(Zero, DiskSize);
-         end;
+         Zero.Quadpart := 0;
+
+//         DiskSize.Quadpart := 512 * 80 * 2 * 18;
+         DiskSize.Quadpart := tGem.BytesPerSector * Blocks;
+
+         Device := TNTDisk.Create;
+         TNTDisk(Device).SetFileName(tmp);
+         TNTDisk(Device).SetMode(True);
+         TNTDisk(Device).SetPartition(Zero, DiskSize);
 
          if Device.Open then
          try
             // write away...
             while WrittenBlocks < Blocks do
             begin
+               if StopRead = True
+               then
+                   break ;
+
                BlocksRemaining := Blocks - WrittenBlocks;
                if BlocksRemaining > BlocksCount then
                begin
@@ -620,13 +789,15 @@ begin
                   BlockCount := BlocksRemaining;
                end;
 
+               try
+                   Device.ReadPhysicalSector(WrittenBlocks, BlockCount, PChar(Buffer));
+               except
+                   StopRead := True ;
+                   break ;
+               end ;
 
-               Device.ReadPhysicalSector(WrittenBlocks, BlockCount, PChar(Buffer));
+               WriteFile2(h1, PChar(Buffer), tGem.BytesPerSector * BlockCount, Read, nil);
 
-               WriteFile2(h1, PChar(Buffer), 512 * BlockCount, Read, nil);
-//               if Read = 0 then break;
-
-//               Device.WritePhysicalSector(WrittenBlocks, BlockCount, PChar(Buffer));
                WrittenBlocks := WrittenBlocks + BlockCount;
                StatusBar1.Panels[0].Text := IntToStr((WrittenBlocks * 100) div Blocks) + '%';
                Application.ProcessMessages;
@@ -638,7 +809,7 @@ begin
          else
          begin
             Error := GetLastError;
-            MessageDlg('Error (' + IntToStr(GetLastError) + ')'#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+            MessageDlg(Format(ErrorMsg, [GetLastError]) + #10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
          end;
       finally
          CloseHandle(h1);
@@ -646,87 +817,367 @@ begin
       else
       begin
          Error := GetLastError;
-         MessageDlg('Error (' + IntToStr(GetLastError) + ')'#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
+         MessageDlg(Format(ErrorMsg, [GetLastError]) +#10 + SysErrorMessage(Error) , mtError, [mbOK], 0);
       end;
    finally
+      CancelButton.Enabled := True ;   
       UnWait;
    end;
+
+   if StopRead = True
+   then
+       StatusBar1.Panels[0].Text := Aborted
+   else
+       StatusBar1.Panels[0].Text := Finish ;
+
+   CancelButton.Enabled := False ;
 end;
 
-procedure TMainForm.TabSheet3Show(Sender: TObject);
+function TMainForm.GetDrive(texte : string): string ;
 begin
-   Memo1.Text :=
-'RawWrite for windows version ' + AutoUpdate1.Version + #13#10+
-'Written by John Newbigin'#13#10+
-'Copyright (C) 2000 John Newbigin'#13#10+
-''#13#10+
-'Under 95, this program requires diskio.dll.'#13#10+
-''#13#10+
-'This program is a replacement for the traditional command'#13#10+
-'line rawrite.  This version works under Windows NT 4, and'#13#10+
-'derived versions like Windows 2000 and Windows XP.  It'#13#10+
-'also works under Windows 95 and derived versions like'#13#10+
-'Windows 98 and Windows ME.'#13#10+
-''#13#10+
-'It should be very easy to use, just select the drive you want'#13#10+
-'to use, select the image file and hit read or write.'#13#10+
-''#13#10+
-'This verson supports reading an image from a disk.  Only'#13#10+
-'1.44 disks is supported at this time.  Writing to 1.2 drives'#13#10+
-'might work.'#13#10+
-''#13#10+
-'Other disk sizes are not supported because this application'#13#10+
-'does not format the disks it just reads and writes it.  If'#13#10+
-'you want to use a non-standard disk size, you will need'#13#10+
-'another tool.'#13#10+
-''#13#10+
+   if (texte[length(texte)] = ')') and (texte[length(texte) - 3] = '(')
+   then
+       Result := texte[length(texte) - 2]
+   else
+       Result := '' ;
+end ;
 
-'Copyright'#13#10+
-'========='#13#10+
-'This program is free software; you can redistribute it and/or'#13#10+
-'modify it under the terms of the GNU General Public License'#13#10+
-'as published by the Free Software Foundation; either'#13#10+
-'version 2 of the License, or (at your option) any later'#13#10+
-'version.'#13#10+
-''#13#10+
-'This program is distributed in the hope that it will be useful,'#13#10+
-'but WITHOUT ANY WARRANTY; without even the implied'#13#10+
-'warranty of MERCHANTABILITY or FITNESS FOR A'#13#10+
-'PARTICULAR PURPOSE.  See the GNU General Public'#13#10+
-'License for more details.'#13#10+
-''#13#10+
-'You should have received a copy of the GNU General'#13#10+
-'Public License along with this program; if not, write to the'#13#10+
-'Free Software Foundation, Inc., 675 Mass Ave, Cambridge,'#13#10+
-'MA 02139, USA.'
-
-end;
-
-procedure TMainForm.TabSheet5Show(Sender: TObject);
+procedure TMainForm.CancelButton2Click(Sender: TObject);
 begin
-   Memo2.Text :=
-'Command Line Parameters'#13#10+
-'======================='#13#10+
-'This version supports command line parameters.'#13#10+
-''#13#10+
-'To write an image, the command is'#13#10+
-'rawwritewin [--write] [--copies n] [--drive driveno] file.img'#13#10+
-''#13#10+
-'To read an image, the command is'#13#10+
-'rawwritewin --read [--drive driveno] file.img'#13#10+
-'If file.img already exists it will be overwritten'#13#10+
-''#13#10+
-'driveno is the index of the drive as shown when rawwritewin'#13#10+
-'is run interactivly.  The default is 0 which is the first drive'#13#10+
-'listed'#13#10+
-'';
-
+    StopRead := True ;
 end;
 
-procedure TMainForm.Button6Click(Sender: TObject);
+procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-   AutoUpdate1.CheckForUpgrade(True);
+   StopRead := True ;
+   TButton(Sender).Enabled := false ;
 end;
+
+{*******************************************************************************
+ * Read language
+ ******************************************************************************}
+procedure TMainForm.ReadLanguageFile() ;
+Var FichierLangue : TIniFile ;
+    tmp : string ;
+begin
+    FichierLangue := TIniFile.Create('.\lang.ini') ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Drive', '') ;
+
+    if tmp <> ''
+    then
+        Label2.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Write', '') ;
+
+    if tmp <> ''
+    then
+        TabSheet1.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteButton', '') ;
+
+    if tmp <> ''
+    then
+        WriteButton.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Label8', '') ;
+
+    if tmp <> ''
+    then
+        Label8.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Label1', '') ;
+
+    if tmp <> ''
+    then
+        Label1.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Label11', '') ;
+
+    if tmp <> ''
+    then
+        Label11.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Cancel', '') ;
+
+    if tmp <> ''
+    then
+        CancelButton2.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Exit', '') ;
+
+    if tmp <> ''
+    then
+        Button3.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Create', '') ;
+
+    if tmp <> ''
+    then
+        TabSheet2.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Label9', '') ;
+
+    if tmp <> ''
+    then
+        Label9.Caption := tmp ;
+
+    tmp := Label1.Caption ;
+
+    if tmp <> ''
+    then
+         Label7.Caption := tmp ;
+
+    tmp := CancelButton2.Caption ;
+
+    if tmp <> ''
+    then
+         CancelButton.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'About', '') ;
+
+    if tmp <> ''
+    then
+        TabSheet3.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Help', '') ;
+
+    if tmp <> ''
+    then
+         TabSheet5.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'HelpText', '') ;
+
+    if tmp <> ''
+    then
+        TranslateText(tmp, Memo2) ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Support', '') ;
+
+    if tmp <> ''
+    then
+        TabSheet6.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Debug', '') ;
+
+    if tmp <> ''
+    then
+        TabSheet7.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteWarning', '') ;
+
+    if tmp <> ''
+    then
+        WriteWarning := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WarningTitle', '') ;
+
+    if tmp <> ''
+    then
+        WarningTitle := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'DriveNotFound', '') ;
+
+    if tmp <> ''
+    then
+        DriveNotFound := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'FileNotFound', '') ;
+
+    if tmp <> ''
+    then
+        FileNotFound := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'DiskText', '') ;
+
+    if tmp <> ''
+    then
+        DiskText := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'ErrorOpeningDisk', '') ;
+
+    if tmp <> ''
+    then
+        ErrorOpeningDisk := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'ErrorOpeningImage', '') ;
+
+    if tmp <> ''
+    then
+        ErrorOpeningImage := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Error', '') ;
+
+    if tmp <> ''
+    then
+        ErrorMsg := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Aborted', '') ;
+
+    if tmp <> ''
+    then
+        Aborted := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'Finish', '') ;
+
+    if tmp <> ''
+    then
+        Finish := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'CreateBtn', '') ;
+
+    if tmp <> ''
+    then
+        ReadButton.Caption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'FilterFile', '') ;
+
+    if tmp <> ''
+    then begin
+        OpenDialog1.Filter := tmp ;
+        SaveDialog1.Filter := tmp ;
+    end ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'PleaseSelectDrive', '') ;
+
+    if tmp <> ''
+    then
+        PleaseSelectDrive := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'ErrorGetParameterOfDisk', '') ;
+
+    if tmp <> ''
+    then
+        ErrorGetParameterOfDisk := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'UnknowLineOption', '') ;
+
+    if tmp <> ''
+    then
+        UnknowLineOption := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteSuccessFull', '') ;
+
+    if tmp <> ''
+    then
+        WriteSuccessFull := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteSuccessFull2', '') ;
+
+    if tmp <> ''
+    then
+        WriteSuccessFull2 := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteFailed', '') ;
+
+    if tmp <> ''
+    then
+        WriteFailed := tmp ;
+
+    tmp := FichierLangue.ReadString('rawwrite', 'WriteSuccessFull3', '') ;
+    
+    if tmp <> ''
+    then
+        WriteSuccessFull3 := tmp ;
+
+    FichierLangue.Free ;
+end ;
+
+{*******************************************************************************
+ * Translate texte with \n new line in TMemo
+ ******************************************************************************}
+procedure TMainForm.TranslateText(texte : string; Memo : TMemo) ;
+var i, nb : integer ;
+    tmp : string ;
+begin
+    Memo.Clear ;
+
+    nb := length(texte) ;
+    tmp := '' ;
+    i := 1 ;
+    
+    while i <= nb do
+    begin
+        if texte[i] = '\'
+        then begin
+            if i < nb
+            then
+                if texte[i+1] = 'n'
+                then begin
+                    Memo.Lines.Add(tmp)  ;
+                    tmp := '' ;
+                    Inc(i) ;
+                end ;
+        end
+        else
+            tmp := tmp + texte[i] ;
+
+        Inc(i) ;
+    end ;
+
+    Memo.Lines.Add(tmp)  ;
+    
+end ;
+
+{*******************************************************************************
+ * Select disk in combobox with letter or number of physical drive
+ ******************************************************************************}
+procedure TMainForm.SelectDisk(drive : string) ;
+Var i, nb : integer ;
+    found : boolean ;
+
+    function finddrive(drive : string; i : integer) : boolean;
+    begin
+        if GetDrive(DriveComboBox.Items[i]) = drive
+        then
+            Result := True
+        else if GetPhysicalDriveNumber(DriveComboBox.Items[i]) = drive
+        then
+            Result := True
+        else
+            Result := False ;
+            
+
+    end ;
+begin
+    nb := DriveComboBox.Items.Count ;
+    found := False ;
+
+    for i := 0 to nb - 1 do
+    begin
+        if finddrive(drive, i) = true
+        then begin
+            DriveComboBox.ItemIndex := i ;
+            found := True ;
+            break ;
+        end ;
+    end ;
+
+    if found = false
+    then
+        MessageDlg(DriveNotFound, mtError, [mbOk], 0) ;
+end ;
+
+{*******************************************************************************
+ * Get physical drive number.
+ * string must be 'Disk XXX'
+ ******************************************************************************}
+function TMainForm.GetPhysicalDriveNumber(texte : string) : string ;
+Var i, nb : integer ;
+begin
+    nb := length(texte) ;
+    Result := '' ;
+
+    for i := 6 to nb do
+    begin
+        if texte[i] in ['0'..'9']
+        then
+            Result := Result + texte[i]
+        else
+            break ;
+    end ;
+
+end ;
 
 end.
 

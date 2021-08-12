@@ -1,10 +1,11 @@
 object MainForm: TMainForm
-  Left = 399
-  Top = 255
+  Left = 400
+  Top = 256
+  BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'RawWrite'
-  ClientHeight = 349
-  ClientWidth = 361
+  ClientHeight = 347
+  ClientWidth = 359
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -108,63 +109,17 @@ object MainForm: TMainForm
     07FFFFE007FFFFE007FFFFE007FFFFF00FFFFFF81FFF}
   OldCreateOrder = True
   Position = poScreenCenter
+  OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
   object Label2: TLabel
     Left = 16
-    Top = 56
-    Width = 57
+    Top = 60
+    Width = 25
     Height = 13
-    Caption = 'Floppy drive'
-  end
-  object FloppyImage: TImage
-    Left = 264
-    Top = 64
-    Width = 16
-    Height = 9
-    AutoSize = True
-    Picture.Data = {
-      07544269746D6170C6040000424DC60400000000000036040000280000001000
-      0000090000000100080000000000900000000000000000000000000100000001
-      00000000000084848400C6C6C6000000FF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00040000000000000000000000000004040101010101010101010101010101
-      0004010202020204040404020202020101000102010101000000000101010201
-      0100010202020201010101020202020101000102020202020202020202030201
-      0100010404040404040404040404040101000401020202020202020202020202
-      010004040101010101010101010101010104}
-    Visible = False
+    Caption = 'Drive'
+    Transparent = True
   end
   object Label3: TLabel
     Left = 16
@@ -172,22 +127,23 @@ object MainForm: TMainForm
     Width = 106
     Height = 13
     Caption = 'RawWrite for windows'
-    OnDblClick = Label3DblClick
+    Transparent = True
   end
   object Label4: TLabel
     Left = 16
     Top = 32
-    Width = 121
+    Width = 215
     Height = 13
-    Caption = 'Written by John Newbigin'
+    Caption = 'Written by John Newbigin && Emeric Martineau'
+    Transparent = True
   end
   object Label5: TLabel
-    Left = 168
+    Left = 208
     Top = 8
-    Width = 177
+    Width = 133
     Height = 13
-    Cursor = crDrag
-    Caption = 'http://uranus.it.swin.edu.au/~jn/linux'
+    Cursor = crHandPoint
+    Caption = 'http://www.chrysocome.net'
     Color = clBtnFace
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clBlue
@@ -196,12 +152,13 @@ object MainForm: TMainForm
     Font.Style = [fsUnderline]
     ParentColor = False
     ParentFont = False
+    Transparent = True
     OnClick = Label5Click
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 330
-    Width = 361
+    Top = 328
+    Width = 359
     Height = 19
     Panels = <
       item
@@ -210,15 +167,11 @@ object MainForm: TMainForm
       end
       item
         Width = 75
-      end
-      item
-        Text = 'Version'
-        Width = 50
       end>
     SimplePanel = False
   end
   object DriveComboBox: TComboBox
-    Left = 88
+    Left = 56
     Top = 56
     Width = 169
     Height = 22
@@ -242,29 +195,33 @@ object MainForm: TMainForm
     Width = 329
     Height = 193
     ActivePage = TabSheet1
+    TabIndex = 0
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Write'
       object Label1: TLabel
         Left = 8
-        Top = 32
+        Top = 35
         Width = 45
         Height = 13
         Caption = 'Image file'
+        Transparent = True
       end
       object Label8: TLabel
         Left = 8
         Top = 8
-        Width = 204
+        Width = 182
         Height = 13
-        Caption = 'Use this tab to write an image to floppy disk'
+        Caption = 'Use this tab to write an image to a disk'
+        Transparent = True
       end
       object Label11: TLabel
         Left = 8
-        Top = 56
+        Top = 60
         Width = 83
         Height = 13
         Caption = 'Number of copies'
+        Transparent = True
       end
       object FileNameEdit: TEdit
         Left = 104
@@ -282,22 +239,13 @@ object MainForm: TMainForm
         TabOrder = 1
         OnClick = Button1Click
       end
-      object DebugMemo: TMemo
-        Left = 8
-        Top = 80
-        Width = 217
-        Height = 77
-        ScrollBars = ssVertical
-        TabOrder = 2
-        Visible = False
-      end
       object WriteButton: TButton
         Left = 238
         Top = 132
         Width = 75
         Height = 25
         Caption = '&Write'
-        TabOrder = 3
+        TabOrder = 2
         OnClick = WriteButtonClick
       end
       object WriteCopyEdit: TEdit
@@ -305,7 +253,7 @@ object MainForm: TMainForm
         Top = 56
         Width = 49
         Height = 21
-        TabOrder = 4
+        TabOrder = 3
         Text = '1'
       end
       object UpDown1: TUpDown
@@ -316,26 +264,38 @@ object MainForm: TMainForm
         Associate = WriteCopyEdit
         Min = 1
         Position = 1
-        TabOrder = 5
+        TabOrder = 4
         Wrap = False
+      end
+      object CancelButton2: TButton
+        Left = 8
+        Top = 132
+        Width = 75
+        Height = 25
+        Caption = 'Cance&l'
+        Enabled = False
+        TabOrder = 5
+        OnClick = CancelButton2Click
       end
     end
     object TabSheet2: TTabSheet
-      Caption = 'Read'
+      Caption = 'Create'
       ImageIndex = 1
       object Label7: TLabel
         Left = 8
-        Top = 32
+        Top = 35
         Width = 45
         Height = 13
         Caption = 'Image file'
+        Transparent = True
       end
       object Label9: TLabel
         Left = 8
         Top = 8
-        Width = 239
+        Width = 217
         Height = 13
-        Caption = 'Use this tab to read an image file from a floppy disk'
+        Caption = 'Use this tab to create an image file from a disk'
+        Transparent = True
       end
       object ReadFileNameEdit: TEdit
         Left = 104
@@ -358,9 +318,19 @@ object MainForm: TMainForm
         Top = 132
         Width = 75
         Height = 25
-        Caption = '&Read'
+        Caption = '&Create'
         TabOrder = 2
         OnClick = ReadButtonClick
+      end
+      object CancelButton: TButton
+        Left = 8
+        Top = 132
+        Width = 75
+        Height = 25
+        Caption = 'Cance&l'
+        Enabled = False
+        TabOrder = 3
+        OnClick = CancelButton2Click
       end
     end
     object TabSheet4: TTabSheet
@@ -378,12 +348,46 @@ object MainForm: TMainForm
     object TabSheet3: TTabSheet
       Caption = 'About'
       ImageIndex = 2
-      OnShow = TabSheet3Show
       object Memo1: TMemo
         Left = 8
         Top = 8
         Width = 305
         Height = 153
+        Lines.Strings = (
+          'RawWrite for windows'
+          'Written by John Newbigin'
+          'Copyright (C) 2000 John Newbigin'
+          'Copyright (C) 2007 MARTINEAU Emeric '
+          '<php4php@free.fr>'
+          ''
+          'This program is a replacement for the traditional command '
+          'line rawrite.  This version works under Windows NT 4, and '
+          'derived versions like Windows 2000 and Windows XP.'
+          'It should be very easy to use, just select the drive (fixed or '
+          'usb) you want to use, select the image file and hit read or '
+          'write.'
+          ''
+          'This version supports all disk.'
+          ''
+          'Copyright'
+          ''
+          'This program is free software; you can redistribute it and/or '
+          'modify it under the terms of the GNU General Public License '
+          'as published by the Free Software Foundation; either '
+          'version 2 of the License, or (at your option) any later '
+          'version.'
+          ''
+          'This program is distributed in the hope that it will be useful, '
+          'but WITHOUT ANY WARRANTY; without even the implied '
+          'warranty of MERCHANTABILITY or FITNESS FOR A '
+          'PARTICULAR PURPOSE.  See the GNU General Public '
+          'License for more details.'
+          ''
+          'You should have received a copy of the GNU General '
+          'Public License along with this program; if not, write to the '
+          'Free Software Foundation, Inc., 675 Mass Ave, Cambridge, '
+          'MA 02139, USA.')
+        ReadOnly = True
         ScrollBars = ssVertical
         TabOrder = 0
       end
@@ -391,12 +395,27 @@ object MainForm: TMainForm
     object TabSheet5: TTabSheet
       Caption = 'Help'
       ImageIndex = 4
-      OnShow = TabSheet5Show
       object Memo2: TMemo
         Left = 8
         Top = 8
         Width = 305
         Height = 153
+        Lines.Strings = (
+          'Command Line Parameters'
+          ''
+          'This version supports command line parameters.'
+          ''
+          'To write an image, the command is'
+          'rawwritewin [--write] [--copies n] [--drive driveno] [--yes] '
+          'file.img'
+          '--yes : automatic anwser yes to the question'
+          ''
+          'To read an image, the command is'
+          'rawwritewin --read [--drive driveno] file.img'
+          'If file.img already exists it will be overwritten'
+          ''
+          'driveno is the physical drive number or letter of logical drive')
+        ReadOnly = True
         ScrollBars = ssVertical
         TabOrder = 0
       end
@@ -407,25 +426,27 @@ object MainForm: TMainForm
       object Label12: TLabel
         Left = 8
         Top = 8
-        Width = 193
+        Width = 145
         Height = 41
         AutoSize = False
         Caption = 'To report bugs in this program, contact me'
+        Transparent = True
         WordWrap = True
       end
       object Label6: TLabel
-        Left = 200
+        Left = 160
         Top = 8
-        Width = 114
+        Width = 160
         Height = 13
-        Cursor = crDrag
-        Caption = 'mailto:jn@it.swin.edu.au'
+        Cursor = crHandPoint
+        Caption = 'mailto:jnewbigin@chrysocome.net'
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clBlue
         Font.Height = -11
         Font.Name = 'MS Sans Serif'
         Font.Style = [fsUnderline]
         ParentFont = False
+        Transparent = True
         OnClick = Label5Click
       end
       object Label13: TLabel
@@ -438,6 +459,7 @@ object MainForm: TMainForm
           'If you are having trouble installing Linux, please use the docum' +
           'entation provided with your distribution.  I am too busy to prov' +
           'ide specific installation support.'
+        Transparent = True
         WordWrap = True
       end
       object Label14: TLabel
@@ -449,39 +471,40 @@ object MainForm: TMainForm
         Caption = 
           'Before reporting a problem with rawwrite, please make sure you a' +
           're running the latest version'
+        Transparent = True
         WordWrap = True
       end
-      object Button6: TButton
-        Left = 232
-        Top = 96
-        Width = 75
-        Height = 25
-        Caption = '&Check'
+    end
+    object TabSheet7: TTabSheet
+      Caption = 'Debug'
+      ImageIndex = 6
+      object DebugMemo: TMemo
+        Left = 8
+        Top = 8
+        Width = 305
+        Height = 153
+        ScrollBars = ssVertical
         TabOrder = 0
-        OnClick = Button6Click
       end
     end
   end
   object OpenDialog1: TOpenDialog
-    Filter = 'All files (*.*)|*.*|Image files (*.img)|*.img'
+    Filter = 
+      'All files (*.*)|*.*|Image files (*.img,*.iso,*.nrg)|*.img;*.iso;' +
+      '*.nrg'
     FilterIndex = 2
     Options = [ofFileMustExist]
     Left = 288
     Top = 80
   end
   object SaveDialog1: TSaveDialog
-    Filter = 'All files (*.*)|*.*|Image files (*.img)|*.img'
+    DefaultExt = '.img'
+    Filter = 
+      'All files (*.*)|*.*|Image files (*.img,*.iso,*.nrg)|*.img;*.iso;' +
+      '*.nrg'
     FilterIndex = 2
     Options = [ofOverwritePrompt, ofHideReadOnly, ofPathMustExist, ofEnableSizing]
     Left = 320
     Top = 80
-  end
-  object AutoUpdate1: TAutoUpdate
-    ApplicationName = 'rawwrite'
-    URL = 'http://itig.it.swin.edu.au/autoupdate.php'
-    Version = '0.7'
-    VersionNumber = 7
-    Left = 296
-    Top = 40
   end
 end

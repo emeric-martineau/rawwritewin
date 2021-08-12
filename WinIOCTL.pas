@@ -121,6 +121,8 @@ const
 // IoControlCode values for disk devices.
 //
 
+const
+  IOCTL_DISK_GET_DRIVE_GEOMETRY = $00070000;
 {
 #define IOCTL_DISK_BASE                 FILE_DEVICE_DISK
 #define IOCTL_DISK_GET_DRIVE_GEOMETRY   CTL_CODE(IOCTL_DISK_BASE, 0x0000, METHOD_BUFFERED, FILE_ANY_ACCESS)
